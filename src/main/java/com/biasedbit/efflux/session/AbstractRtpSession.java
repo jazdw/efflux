@@ -53,6 +53,8 @@ import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.TimerTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.SocketAddress;
 import java.util.List;
@@ -74,7 +76,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
 
     // constants ------------------------------------------------------------------------------------------------------
 
-    protected static final Logger LOG = Logger.getLogger(AbstractRtpSession.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(AbstractRtpSession.class);
     protected static final String VERSION = "efflux_0.4_15092010";
 
     // configuration defaults -----------------------------------------------------------------------------------------
