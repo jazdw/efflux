@@ -3,8 +3,7 @@
 /.settings
 /target
 /reports
-/libs
-/bin
 *.ipr
 *.iws
 *.iml
+

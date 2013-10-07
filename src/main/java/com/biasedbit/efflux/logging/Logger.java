@@ -16,7 +16,8 @@
 
 package com.biasedbit.efflux.logging;
 
-import android.util.Log;
+import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.MessageFormatter;
 
 /**
  * Facade for SLF4J's logger.
@@ -28,9 +29,8 @@ import android.util.Log;
 public class Logger {
 
     // internal vars --------------------------------------------------------------------------------------------------
-    String name = null;
-	
-    //private org.slf4j.Logger logger;
+    
+    private org.slf4j.Logger logger;
 
     // constructors ---------------------------------------------------------------------------------------------------
 
@@ -39,13 +39,12 @@ public class Logger {
      *
      * @param clazz Name of the class to log.
      */
-    @SuppressWarnings("rawtypes")
     public Logger(Class clazz) {
-        this.name = clazz.getName();
+        this.logger = LoggerFactory.getLogger(clazz);
     }
 
     public Logger(String name) {
-        this.name = name;
+        this.logger = LoggerFactory.getLogger(name);
     }
 
     // static methods -------------------------------------------------------------------------------------------------
@@ -57,8 +56,7 @@ public class Logger {
      *
      * @return Logger for a class.
      */
-    @SuppressWarnings("rawtypes")
-	public static Logger getLogger(Class clazz) {
+    public static Logger getLogger(Class clazz) {
         return new Logger(clazz);
     }
 
@@ -74,7 +72,7 @@ public class Logger {
      * @return Name of the logger.
      */
     public String getName() {
-        return name;
+        return this.logger.getName();
     }
 
     /**
@@ -83,7 +81,7 @@ public class Logger {
      * @return <code>true</code> if trace logging level is enabled, <code>false</code> otherwise.
      */
     public boolean isTraceEnabled() {
-    	return true;
+        return this.logger.isTraceEnabled();
     }
 
     /**
@@ -92,7 +90,7 @@ public class Logger {
      * @param message Message to be logged.
      */
     public void trace(String message) {
-    	Log.d(name, message);
+        this.logger.trace(message);
     }
 
     /**
@@ -102,7 +100,7 @@ public class Logger {
      * @param parameter Message parameter.
      */
     public void trace(String message, Object parameter) {
-    	Log.d(name, message.replaceFirst("\\{\\}", parameter.toString()));
+        this.logger.trace(message, parameter);
     }
 
     /**
@@ -112,10 +110,10 @@ public class Logger {
      * @param parameters Array of parameters.
      */
     public void trace(String message, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.d(name, message);
+        // This is where magic happens and syntax sugar is offered...
+        // The interface overrides an Object[] and offers Object... instead!
+        // Awesome, ain't it? No. It should come as standard in SLF4J.
+        this.logger.trace(message, parameters);
     }
 
     /**
@@ -125,7 +123,7 @@ public class Logger {
      * @param throwable Throwable to be logged.
      */
     public void trace(String message, Throwable throwable) {
-    	Log.d(name, message + "\r\n" + throwable.toString());
+        this.logger.trace(message, throwable);
     }
 
     /**
@@ -145,10 +143,9 @@ public class Logger {
      * @param parameters Parameters to format the message.
      */
     public void trace(String message, Throwable throwable, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.d(name, message + "\r\n" + throwable.toString());
+        if (this.logger.isTraceEnabled()) {
+            this.logger.trace(MessageFormatter.arrayFormat(message, parameters).getMessage(), throwable);
+        }
     }
 
     /**
@@ -157,7 +154,7 @@ public class Logger {
      * @return <code>true</code> if debug logging level is enabled, <code>false</code> otherwise.
      */
     public boolean isDebugEnabled() {
-    	return false;
+        return this.logger.isDebugEnabled();
     }
 
     /**
@@ -166,7 +163,7 @@ public class Logger {
      * @param message Message to be logged.
      */
     public void debug(String message) {
-    	Log.d(name, message);
+        this.logger.debug(message);
     }
 
     /**
@@ -176,7 +173,7 @@ public class Logger {
      * @param parameter Message parameter.
      */
     public void debug(String message, Object parameter) {
-    	Log.d(name, message.replaceFirst("\\{\\}", parameter.toString()));
+        this.logger.debug(message, parameter);
     }
 
 
@@ -187,10 +184,7 @@ public class Logger {
      * @param parameters Array of parameters.
      */
     public void debug(String message, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.d(name, message);
+        this.logger.debug(message, parameters);
     }
 
     /**
@@ -200,7 +194,7 @@ public class Logger {
      * @param throwable Throwable to be logged.
      */
     public void debug(String message, Throwable throwable) {
-    	Log.d(name, message + "\r\n" + throwable.toString());
+        this.logger.debug(message, throwable);
     }
 
     /**
@@ -220,10 +214,9 @@ public class Logger {
      * @param parameters Parameters to format the message.
      */
     public void debug(String message, Throwable throwable, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.d(name, message + "\r\n" + throwable.toString());
+        if (this.logger.isDebugEnabled()) {
+            this.logger.debug(MessageFormatter.arrayFormat(message, parameters).getMessage(), throwable);
+        }
     }
 
     /**
@@ -232,7 +225,7 @@ public class Logger {
      * @return <code>true</code> if info logging level is enabled, <code>false</code> otherwise.
      */
     public boolean isInfoEnabled() {
-    	return true;
+        return this.logger.isInfoEnabled();
     }
 
     /**
@@ -241,7 +234,7 @@ public class Logger {
      * @param message Message to be logged.
      */
     public void info(String message) {
-    	Log.i(name, message);
+        this.logger.info(message);
     }
 
     /**
@@ -251,7 +244,7 @@ public class Logger {
      * @param parameter Message parameter.
      */
     public void info(String message, Object parameter) {
-    	Log.i(name, message.replaceFirst("\\{\\}", parameter.toString()));
+        this.logger.info(message, parameter);
     }
 
     /**
@@ -261,10 +254,7 @@ public class Logger {
      * @param parameters Array of parameters.
      */
     public void info(String message, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.i(name, message);
+        this.logger.info(message, parameters);
     }
 
     /**
@@ -274,7 +264,7 @@ public class Logger {
      * @param throwable Throwable to be logged.
      */
     public void info(String message, Throwable throwable) {
-    	Log.i(name, message + "\r\n" + throwable.toString());
+        this.logger.info(message, throwable);
     }
 
     /**
@@ -294,10 +284,9 @@ public class Logger {
      * @param parameters Parameters to format the message.
      */
     public void info(String message, Throwable throwable, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.i(name, message + "\r\n" + throwable.toString());
+        if (this.logger.isInfoEnabled()) {
+            this.logger.info(MessageFormatter.arrayFormat(message, parameters).getMessage(), throwable);
+        }
     }
 
     /**
@@ -306,7 +295,7 @@ public class Logger {
      * @return <code>true</code> if warn logging level is enabled, <code>false</code> otherwise.
      */
     public boolean isWarnEnabled() {
-    	return true;
+        return this.logger.isWarnEnabled();
     }
 
     /**
@@ -315,7 +304,7 @@ public class Logger {
      * @param message Message to be logged.
      */
     public void warn(String message) {
-    	Log.w(name, message);
+        this.logger.warn(message);
     }
 
     /**
@@ -325,7 +314,7 @@ public class Logger {
      * @param parameter Message parameter.
      */
     public void warn(String message, Object parameter) {
-    	Log.w(name, message.replaceFirst("\\{\\}", parameter.toString()));
+        this.logger.warn(message, parameter);
     }
 
     /**
@@ -335,10 +324,7 @@ public class Logger {
      * @param parameters Array of parameters.
      */
     public void warn(String message, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.w(name, message);
+        this.logger.warn(message, parameters);
     }
 
     /**
@@ -348,7 +334,7 @@ public class Logger {
      * @param throwable Throwable to be logged.
      */
     public void warn(String message, Throwable throwable) {
-    	Log.w(name, message + "\r\n" + throwable.toString());
+        this.logger.warn(message, throwable);
     }
 
     /**
@@ -368,10 +354,9 @@ public class Logger {
      * @param parameters Parameters to format the message.
      */
     public void warn(String message, Throwable throwable, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.w(name, message + "\r\n" + throwable.toString());
+        if (this.logger.isWarnEnabled()) {
+            this.logger.warn(MessageFormatter.arrayFormat(message, parameters).getMessage(), throwable);
+        }
     }
 
     /**
@@ -380,7 +365,7 @@ public class Logger {
      * @return <code>true</code> if error logging level is enabled, <code>false</code> otherwise.
      */
     public boolean isErrorEnabled() {
-    	return true;
+        return this.logger.isErrorEnabled();
     }
 
     /**
@@ -389,7 +374,7 @@ public class Logger {
      * @param message Message to be logged.
      */
     public void error(String message) {
-    	Log.e(name, message);
+        this.logger.error(message);
     }
 
     /**
@@ -399,7 +384,7 @@ public class Logger {
      * @param parameter Message parameter.
      */
     public void error(String message, Object parameter) {
-    	Log.e(name, message.replaceFirst("\\{\\}", parameter.toString()));
+        this.logger.error(message, parameter);
     }
 
     /**
@@ -409,10 +394,7 @@ public class Logger {
      * @param parameters Array of parameters.
      */
     public void error(String message, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.e(name, message);
+        this.logger.error(message, parameters);
     }
 
     /**
@@ -422,7 +404,7 @@ public class Logger {
      * @param throwable Throwable to be logged.
      */
     public void error(String message, Throwable throwable) {
-    	Log.e(name, message + "\r\n" + throwable.toString());
+        this.logger.error(message, throwable);
     }
 
     /**
@@ -442,9 +424,8 @@ public class Logger {
      * @param parameters Parameters to format the message.
      */
     public void error(String message, Throwable throwable, Object... parameters) {
-    	for (Object obj : parameters) {
-    		message = message.replaceFirst("\\{\\}", obj.toString());
-    	}
-    	Log.e(name, message + "\r\n" + throwable.toString());
+        if (this.logger.isErrorEnabled()) {
+            this.logger.error(MessageFormatter.arrayFormat(message, parameters).getMessage(), throwable);
+        }
     }
 }
