@@ -16,7 +16,6 @@
 
 package com.biasedbit.efflux.session;
 
-import com.biasedbit.efflux.logging.Logger;
 import com.biasedbit.efflux.network.ControlHandler;
 import com.biasedbit.efflux.network.ControlPacketDecoder;
 import com.biasedbit.efflux.network.ControlPacketEncoder;
