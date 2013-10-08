@@ -33,29 +33,29 @@ public class RtpParticipant {
 
     // constants ------------------------------------------------------------------------------------------------------
 
-    private static final int VALID_PACKETS_UNTIL_VALID_PARTICIPANT = 3;
+    protected static final int VALID_PACKETS_UNTIL_VALID_PARTICIPANT = 3;
 
     // configuration --------------------------------------------------------------------------------------------------
 
-    private final RtpParticipantInfo info;
+    protected final RtpParticipantInfo info;
 
     // internal vars --------------------------------------------------------------------------------------------------
 
-    private SocketAddress dataDestination;
-    private SocketAddress controlDestination;
-    private SocketAddress lastDataOrigin;
-    private SocketAddress lastControlOrigin;
-    private long lastReceptionInstant;
-    private long byeReceptionInstant;
-    private int lastSequenceNumber;
-    private boolean receivedSdes;
-    private final AtomicLong receivedByteCounter;
-    private final AtomicLong receivedPacketCounter;
-    private final AtomicInteger validPacketCounter;
+    protected SocketAddress dataDestination;
+    protected SocketAddress controlDestination;
+    protected SocketAddress lastDataOrigin;
+    protected SocketAddress lastControlOrigin;
+    protected long lastReceptionInstant;
+    protected long byeReceptionInstant;
+    protected int lastSequenceNumber;
+    protected boolean receivedSdes;
+    protected final AtomicLong receivedByteCounter;
+    protected final AtomicLong receivedPacketCounter;
+    protected final AtomicInteger validPacketCounter;
 
     // constructors ---------------------------------------------------------------------------------------------------
 
-    private RtpParticipant(RtpParticipantInfo info) {
+    protected RtpParticipant(RtpParticipantInfo info) {
         // For internal use only.
         this.info = info;
 

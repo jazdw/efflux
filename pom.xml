@@ -4,7 +4,7 @@
 
   <groupId>org.factor45.efflux</groupId>
   <artifactId>efflux</artifactId>
-  <version>0.4.0</version>
+  <version>0.4.1-jazdw-001</version>
   <packaging>jar</packaging>
 
   <name>efflux</name>
@@ -175,31 +175,6 @@
           <excludePackageNames>
             ${project.groupId}.util*:org.jboss*
           </excludePackageNames>
-        </configuration>
-      </plugin>
-
-      <!-- xref generation -->
-      <plugin>
-        <artifactId>maven-jxr-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>generate-xref</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jxr</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <inputEncoding>UTF-8</inputEncoding>
-          <outputEncoding>UTF-8</outputEncoding>
-          <linkJavadoc>true</linkJavadoc>
-          <destDir>${project.build.directory}/xref</destDir>
-          <javadocDir>${project.build.directory}/api</javadocDir>
-          <stylesheet>${basedir}/src/xref/stylesheet.css</stylesheet>
-          <docTitle>${project.name} Source Xref (${project.version})</docTitle>
-          <windowTitle>${project.name} Source Xref (${project.version})</windowTitle>
-          <lineLength>120</lineLength>
         </configuration>
       </plugin>
 
