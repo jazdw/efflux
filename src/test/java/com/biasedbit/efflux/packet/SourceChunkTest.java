@@ -16,7 +16,7 @@
 
 package com.biasedbit.efflux.packet;
 
-import org.jboss.netty.buffer.ChannelBuffer;
+import io.netty.buffer.ByteBuf;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -35,7 +35,7 @@ public class SourceChunkTest {
         chunk.addItem(SdesChunkItems.createEmailItem("email"));
         chunk.addItem(SdesChunkItems.createPrivItem("prefix", "value"));
 
-        ChannelBuffer encoded = chunk.encode();
+        ByteBuf encoded = chunk.encode();
         // Must be 32 bit aligned.
         assertEquals(0, encoded.readableBytes() % 4);
         System.err.println("encoded readable bytes: " + encoded.readableBytes());

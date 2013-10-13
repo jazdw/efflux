@@ -18,24 +18,28 @@ package com.biasedbit.efflux.network;
 
 import com.biasedbit.efflux.packet.CompoundControlPacket;
 import com.biasedbit.efflux.packet.ControlPacket;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.ChannelDownstreamHandler;
-import org.jboss.netty.channel.ChannelEvent;
-import org.jboss.netty.channel.ChannelHandler;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.MessageEvent;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.AddressedEnvelope;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.socket.DatagramPacket;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.List;
 
 /**
  * @author <a href="http://bruno.biasedbit.com/">Bruno de Carvalho</a>
  */
 @ChannelHandler.Sharable
-public class ControlPacketEncoder implements ChannelDownstreamHandler {
+public class ControlPacketEncoder extends ChannelOutboundHandlerAdapter {
 
     // constants ------------------------------------------------------------------------------------------------------
 
@@ -52,28 +56,31 @@ public class ControlPacketEncoder implements ChannelDownstreamHandler {
         return InstanceHolder.INSTANCE;
     }
 
-    // ChannelDownstreamHandler ---------------------------------------------------------------------------------------
+    // ChannelOutboundHandlerAdapter ---------------------------------------------------------------------------------------
 
     @Override
-    public void handleDownstream(ChannelHandlerContext ctx, ChannelEvent evt) throws Exception {
-        if (!(evt instanceof MessageEvent)) {
-            ctx.sendDownstream(evt);
-            return;
-        }
-
-        MessageEvent e = (MessageEvent) evt;
+    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
         try {
-            if (e.getMessage() instanceof ControlPacket) {
-                Channels.write(ctx, e.getFuture(), ((ControlPacket) e.getMessage()).encode(), e.getRemoteAddress());
-            } else if (e.getMessage() instanceof CompoundControlPacket) {
-                List<ControlPacket> packets = ((CompoundControlPacket) e.getMessage()).getControlPackets();
-                ChannelBuffer[] buffers = new ChannelBuffer[packets.size()];
-                for (int i = 0; i < buffers.length; i++) {
-                    buffers[i] = packets.get(i).encode();
+        	if (msg instanceof AddressedEnvelope) {
+        		@SuppressWarnings("unchecked")
+				AddressedEnvelope<Object, SocketAddress> envelope = (AddressedEnvelope<Object, SocketAddress>) msg;
+        		
+        		Object packet = envelope.content();
+        		
+        		if (packet instanceof ControlPacket) {
+                	ctx.writeAndFlush(new DatagramPacket(((ControlPacket) packet).encode(),
+                			(InetSocketAddress) envelope.recipient()), promise);
+                } else if (packet instanceof CompoundControlPacket) {
+                    List<ControlPacket> packets = ((CompoundControlPacket) packet).getControlPackets();
+                    ByteBuf[] buffers = new ByteBuf[packets.size()];
+                    for (int i = 0; i < buffers.length; i++) {
+                        buffers[i] = packets.get(i).encode();
+                    }
+                    
+                    ByteBuf compoundBuffer = Unpooled.wrappedBuffer(buffers);
+                    ctx.writeAndFlush(new DatagramPacket(compoundBuffer, (InetSocketAddress) envelope.recipient()), promise);
                 }
-                ChannelBuffer compoundBuffer = ChannelBuffers.wrappedBuffer(buffers);
-                Channels.write(ctx, e.getFuture(), compoundBuffer, e.getRemoteAddress());
-            }
+        	}
         } catch (Exception e1) {
             LOG.error("Failed to encode compound RTCP packet to send.", e1);
         }

@@ -17,8 +17,8 @@
 package com.biasedbit.efflux.packet;
 
 import com.biasedbit.efflux.util.ByteUtils;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -35,7 +35,7 @@ public class SourceDescriptionPacketTest {
         String hexString = "81ca00054f52eb38010e6e756c6c406c6f63616c686f7374";
         byte[] bytes = ByteUtils.convertHexStringToByteArray(hexString);
 
-        ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(bytes);
+        ByteBuf buffer = Unpooled.wrappedBuffer(bytes);
         ControlPacket controlPacket = ControlPacket.decode(buffer);
         assertEquals(RtpVersion.V2, controlPacket.getVersion());
         assertEquals(ControlPacket.Type.SOURCE_DESCRIPTION, controlPacket.getType());
@@ -60,7 +60,7 @@ public class SourceDescriptionPacketTest {
                            "6436353941323834434144384234443631383641324643304336383039363137300000";
         byte[] bytes = ByteUtils.convertHexStringToByteArray(hexString);
 
-        ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(bytes);
+        ByteBuf buffer = Unpooled.wrappedBuffer(bytes);
         ControlPacket controlPacket = ControlPacket.decode(buffer);
         assertEquals(RtpVersion.V2, controlPacket.getVersion());
         assertEquals(ControlPacket.Type.SOURCE_DESCRIPTION, controlPacket.getType());
@@ -96,7 +96,7 @@ public class SourceDescriptionPacketTest {
         chunk.addItem(SdesChunkItems.createCnameItem("Randy"));
         packet.addItem(chunk);
 
-        ChannelBuffer encoded = packet.encode();
+        ByteBuf encoded = packet.encode();
         System.out.println(ByteUtils.writeArrayAsHex(encoded.array(), true));
 
         assertEquals(0, encoded.readableBytes() % 4);
@@ -138,7 +138,7 @@ public class SourceDescriptionPacketTest {
         chunk.addItem(SdesChunkItems.createCnameItem("Randy"));
         packet.addItem(chunk);
 
-        ChannelBuffer encoded = packet.encode();
+        ByteBuf encoded = packet.encode();
         System.out.println(ByteUtils.writeArrayAsHex(encoded.array(), true));
 
         assertEquals(0, encoded.readableBytes() % 4);
@@ -179,7 +179,7 @@ public class SourceDescriptionPacketTest {
         packet.addItem(chunk);
 
         // 36 bytes
-        ChannelBuffer encoded = packet.encode();
+        ByteBuf encoded = packet.encode();
         System.out.println(ByteUtils.writeArrayAsHex(encoded.array(), true));
         System.out.println("simple encoding length: " + encoded.readableBytes());
         assertEquals(0, encoded.readableBytes() % 4);

@@ -17,7 +17,7 @@
 package com.biasedbit.efflux.packet;
 
 import com.biasedbit.efflux.util.ByteUtils;
-import org.jboss.netty.buffer.ChannelBuffer;
+import io.netty.buffer.ByteBuf;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -91,7 +91,7 @@ public class DataPacketTest {
         packet.setTimestamp(103700);
         packet.setSsrc(0x1fcc779a);
         packet.setData(new byte[]{(byte) 0xd5, (byte) 0xd5, (byte) 0xd5, (byte) 0xd5, (byte) 0xd5, (byte) 0xd5});
-        ChannelBuffer buffer = packet.encode();
+        ByteBuf buffer = packet.encode();
         assertTrue(Arrays.equals(ALAW_RTP_PACKET_SAMPLE, buffer.array()));
     }
 
@@ -110,7 +110,7 @@ public class DataPacketTest {
         packet.addContributingSourceId(71);
         packet.setData(new byte[]{0x69, 0x69, 0x69, 0x69});
 
-        ChannelBuffer buffer = packet.encode();
+        ByteBuf buffer = packet.encode();
 
         DataPacket decoded = DataPacket.decode(buffer);
         assertEquals(packet.getVersion(), decoded.getVersion());
@@ -157,7 +157,7 @@ public class DataPacketTest {
         packet.setData(new byte[]{0x45, 0x45, 0x45, 0x45, 0x45});
         System.out.println("packet = " + packet);
 
-        ChannelBuffer encoded = packet.encode(64);
+        ByteBuf encoded = packet.encode(64);
         System.out.println(ByteUtils.writeArrayAsHex(encoded.array(), true));
         assertEquals(64, encoded.readableBytes());
 

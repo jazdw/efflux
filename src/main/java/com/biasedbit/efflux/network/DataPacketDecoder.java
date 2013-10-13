@@ -16,36 +16,32 @@
 
 package com.biasedbit.efflux.network;
 
+import java.util.List;
+
 import com.biasedbit.efflux.packet.DataPacket;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.handler.codec.oneone.OneToOneDecoder;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.MessageToMessageDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * @author <a href="http://bruno.biasedbit.com/">Bruno de Carvalho</a>
  */
-public class DataPacketDecoder extends OneToOneDecoder {
+public class DataPacketDecoder extends MessageToMessageDecoder<ByteBuf> {
 
     // constants ------------------------------------------------------------------------------------------------------
 
-    protected static final Logger LOG = LoggerFactory.getLogger(OneToOneDecoder.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(DataPacketDecoder.class);
 
-    // OneToOneDecoder ------------------------------------------------------------------------------------------------
+    // MessageToMessageDecoder ------------------------------------------------------------------------------------------------
 
-    @Override
-    protected Object decode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
-        if (!(msg instanceof ChannelBuffer)) {
-            return null;
-        }
-
-        try {
-            return DataPacket.decode((ChannelBuffer) msg);
+	@Override
+	protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
+		try {
+            out.add(DataPacket.decode(msg));
         } catch (Exception e) {
             LOG.debug("Failed to decode RTP packet.", e);
-            return null;
         }
-    }
+	}
 }

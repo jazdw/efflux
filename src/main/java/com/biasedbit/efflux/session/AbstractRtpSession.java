@@ -38,20 +38,22 @@ import com.biasedbit.efflux.participant.ParticipantDatabase;
 import com.biasedbit.efflux.participant.ParticipantOperation;
 import com.biasedbit.efflux.participant.RtpParticipant;
 import com.biasedbit.efflux.participant.RtpParticipantInfo;
-import org.jboss.netty.bootstrap.ConnectionlessBootstrap;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.FixedReceiveBufferSizePredictorFactory;
-import org.jboss.netty.channel.socket.DatagramChannel;
-import org.jboss.netty.channel.socket.DatagramChannelFactory;
-import org.jboss.netty.channel.socket.nio.NioDatagramChannelFactory;
-import org.jboss.netty.channel.socket.oio.OioDatagramChannelFactory;
-import org.jboss.netty.handler.execution.ExecutionHandler;
-import org.jboss.netty.handler.execution.OrderedMemoryAwareThreadPoolExecutor;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timeout;
-import org.jboss.netty.util.TimerTask;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.DefaultAddressedEnvelope;
+import io.netty.channel.DefaultMessageSizeEstimator;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.oio.OioEventLoopGroup;
+import io.netty.channel.socket.DatagramChannel;
+import io.netty.channel.socket.nio.NioDatagramChannel;
+import io.netty.channel.socket.oio.OioDatagramChannel;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +61,6 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -96,7 +97,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     protected final String id;
     protected final Set<Integer> payloadTypes = new HashSet<Integer>();
     protected final HashedWheelTimer timer;
-    protected final OrderedMemoryAwareThreadPoolExecutor executor;
     protected String host;
     protected boolean useNio;
     protected boolean discardOutOfOrder;
@@ -116,8 +116,8 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     protected final List<RtpSessionDataListener> dataListeners;
     protected final List<RtpSessionControlListener> controlListeners;
     protected final List<RtpSessionEventListener> eventListeners;
-    protected ConnectionlessBootstrap dataBootstrap;
-    protected ConnectionlessBootstrap controlBootstrap;
+    protected EventLoopGroup dataGroup;
+    protected EventLoopGroup controlGroup;
     protected DatagramChannel dataChannel;
     protected DatagramChannel controlChannel;
     protected final AtomicInteger sequence;
@@ -131,30 +131,18 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     // constructors ---------------------------------------------------------------------------------------------------
 
     public AbstractRtpSession(String id, int payloadType, RtpParticipant local) {
-        this(id, payloadType, local, null, null);
-    }
-
-    public AbstractRtpSession(String id, int payloadType, RtpParticipant local,
-                              HashedWheelTimer timer) {
-        this(id, payloadType, local, timer, null);
-    }
-
-    public AbstractRtpSession(String id, int payloadType, RtpParticipant local,
-                              OrderedMemoryAwareThreadPoolExecutor executor) {
-        this(id, payloadType, local, null, executor);
+        this(id, payloadType, local, null);
     }
     
-    public AbstractRtpSession(String id, int payloadType, RtpParticipant local, HashedWheelTimer timer,
-    		OrderedMemoryAwareThreadPoolExecutor executor) {
-    	this(id, Collections.singleton(payloadType), local, timer, executor);
+    public AbstractRtpSession(String id, int payloadType, RtpParticipant local, HashedWheelTimer timer) {
+    	this(id, Collections.singleton(payloadType), local, timer);
     }
     
-    public AbstractRtpSession(String id, Collection<Integer> payloadTypes , RtpParticipant local, HashedWheelTimer timer,
-                              OrderedMemoryAwareThreadPoolExecutor executor) {
+    public AbstractRtpSession(String id, Collection<Integer> payloadTypes , RtpParticipant local, HashedWheelTimer timer) {
     	for (int payloadType : payloadTypes) {
     		if ((payloadType < 0) || (payloadType > 127)) {
     			throw new IllegalArgumentException("PayloadTypes must be in range [0;127]");
-    		}   		
+    		}
     	}
 
         if (!local.isReceiver()) {
@@ -165,7 +153,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         this.payloadTypes.addAll(payloadTypes);
         this.localParticipant = local;
         this.participantDatabase = this.createDatabase();
-        this.executor = executor;
         if (timer == null) {
             this.timer = new HashedWheelTimer(1, TimeUnit.SECONDS);
             this.internalTimer = true;
@@ -212,67 +199,68 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         if (this.running.get()) {
             return true;
         }
-
-        DatagramChannelFactory factory;
-        if (this.useNio) {
-            factory = new OioDatagramChannelFactory(Executors.newCachedThreadPool());
-        } else {
-            factory = new NioDatagramChannelFactory(Executors.newCachedThreadPool());
-        }
-
-        this.dataBootstrap = new ConnectionlessBootstrap(factory);
-        this.dataBootstrap.setOption("sendBufferSize", this.sendBufferSize);
-        this.dataBootstrap.setOption("receiveBufferSize", this.receiveBufferSize);
-        this.dataBootstrap.setOption("receiveBufferSizePredictorFactory",
-                                     new FixedReceiveBufferSizePredictorFactory(this.receiveBufferSize));
-        this.dataBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-            public ChannelPipeline getPipeline() throws Exception {
-                ChannelPipeline pipeline = Channels.pipeline();
-                pipeline.addLast("decoder", new DataPacketDecoder());
-                pipeline.addLast("encoder", DataPacketEncoder.getInstance());
-                if (executor != null) {
-                    pipeline.addLast("executorHandler", new ExecutionHandler(executor));
-                }
-                pipeline.addLast("handler", new DataHandler(AbstractRtpSession.this));
-                return pipeline;
-            }
-        });
-        this.controlBootstrap = new ConnectionlessBootstrap(factory);
-        this.controlBootstrap.setOption("sendBufferSize", this.sendBufferSize);
-        this.controlBootstrap.setOption("receiveBufferSize", this.receiveBufferSize);
-        this.controlBootstrap.setOption("receiveBufferSizePredictorFactory",
-                                        new FixedReceiveBufferSizePredictorFactory(this.receiveBufferSize));
-        this.controlBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-            public ChannelPipeline getPipeline() throws Exception {
-                ChannelPipeline pipeline = Channels.pipeline();
-                pipeline.addLast("decoder", new ControlPacketDecoder());
-                pipeline.addLast("encoder", ControlPacketEncoder.getInstance());
-                if (executor != null) {
-                    pipeline.addLast("executorHandler", new ExecutionHandler(executor));
-                }
-                pipeline.addLast("handler", new ControlHandler(AbstractRtpSession.this));
-                return pipeline;
-            }
-        });
+        
+        Bootstrap dataBootstrap = new Bootstrap();
+    	Bootstrap controlBootstrap = new Bootstrap();
+    	if (this.useNio) {
+    		this.dataGroup = new NioEventLoopGroup();
+        	this.controlGroup = new NioEventLoopGroup();
+    		dataBootstrap.channel(NioDatagramChannel.class);
+    		controlBootstrap.channel(NioDatagramChannel.class);
+    	}
+    	else {
+        	this.dataGroup = new OioEventLoopGroup();
+        	this.controlGroup = new OioEventLoopGroup();
+    		dataBootstrap.channel(OioDatagramChannel.class);
+    		controlBootstrap.channel(OioDatagramChannel.class);
+    	}
+    	
+    	dataBootstrap.group(dataGroup)
+    		.option(ChannelOption.SO_SNDBUF, this.sendBufferSize)
+    		.option(ChannelOption.SO_RCVBUF, this.receiveBufferSize)
+    		.option(ChannelOption.MESSAGE_SIZE_ESTIMATOR, new DefaultMessageSizeEstimator(this.receiveBufferSize))
+    		.handler(new ChannelInitializer<DatagramChannel>() {
+				@Override
+				protected void initChannel(DatagramChannel ch) throws Exception {
+					ChannelPipeline pipeline = ch.pipeline();
+	                pipeline.addLast("decoder", new DataPacketDecoder());
+	                pipeline.addLast("encoder", DataPacketEncoder.getInstance());
+	                pipeline.addLast("handler", new DataHandler(AbstractRtpSession.this));
+				}
+    		});
+    	
+        controlBootstrap.group(controlGroup)
+			.option(ChannelOption.SO_SNDBUF, this.sendBufferSize)
+			.option(ChannelOption.SO_RCVBUF, this.receiveBufferSize)
+			.option(ChannelOption.MESSAGE_SIZE_ESTIMATOR, new DefaultMessageSizeEstimator(this.receiveBufferSize))
+			.handler(new ChannelInitializer<DatagramChannel>() {
+				@Override
+				protected void initChannel(DatagramChannel ch) throws Exception {
+					ChannelPipeline pipeline = ch.pipeline();
+					pipeline.addLast("decoder", new ControlPacketDecoder());
+	                pipeline.addLast("encoder", ControlPacketEncoder.getInstance());
+	                pipeline.addLast("handler", new ControlHandler(AbstractRtpSession.this));
+				}
+    		});
 
         SocketAddress dataAddress = this.localParticipant.getDataDestination();
         SocketAddress controlAddress = this.localParticipant.getControlDestination();
 
         try {
-            this.dataChannel = (DatagramChannel) this.dataBootstrap.bind(dataAddress);
+            this.dataChannel = (DatagramChannel) dataBootstrap.bind(dataAddress).sync().channel();
         } catch (Exception e) {
             LOG.error("Failed to bind data channel for session with id " + this.id, e);
-            this.dataBootstrap.releaseExternalResources();
-            this.controlBootstrap.releaseExternalResources();
+            dataGroup.shutdownGracefully().syncUninterruptibly();
+            controlGroup.shutdownGracefully().syncUninterruptibly();
             return false;
         }
         try {
-            this.controlChannel = (DatagramChannel) this.controlBootstrap.bind(controlAddress);
+            this.controlChannel = (DatagramChannel) controlBootstrap.bind(controlAddress).sync().channel();
         } catch (Exception e) {
             LOG.error("Failed to bind control channel for session with id " + this.id, e);
-            this.dataChannel.close();
-            this.dataBootstrap.releaseExternalResources();
-            this.controlBootstrap.releaseExternalResources();
+            this.dataChannel.close().syncUninterruptibly();
+            dataGroup.shutdownGracefully().syncUninterruptibly();
+            controlGroup.shutdownGracefully().syncUninterruptibly();
             return false;
         }
 
@@ -578,7 +566,8 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
 
         // For sender reports, also handle the sender information.
         if (abstractReportPacket.getType().equals(ControlPacket.Type.SENDER_REPORT)) {
-            SenderReportPacket senderReport = (SenderReportPacket) abstractReportPacket;
+            @SuppressWarnings("unused")
+			SenderReportPacket senderReport = (SenderReportPacket) abstractReportPacket;
             // TODO
         }
     }
@@ -707,15 +696,15 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     }
 
     protected void writeToData(DataPacket packet, SocketAddress destination) {
-        this.dataChannel.write(packet, destination);
+        this.dataChannel.writeAndFlush(new DefaultAddressedEnvelope<DataPacket, SocketAddress>(packet, destination));
     }
 
     protected void writeToControl(ControlPacket packet, SocketAddress destination) {
-        this.controlChannel.write(packet, destination);
+        this.controlChannel.writeAndFlush(new DefaultAddressedEnvelope<ControlPacket, SocketAddress>(packet, destination));
     }
 
     protected void writeToControl(CompoundControlPacket packet, SocketAddress destination) {
-        this.controlChannel.write(packet, destination);
+        this.controlChannel.writeAndFlush(new DefaultAddressedEnvelope<CompoundControlPacket, SocketAddress>(packet, destination));
     }
 
     protected void joinSession(long currentSsrc) {
@@ -784,7 +773,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         if (info.getCname() == null) {
             info.setCname(new StringBuilder()
                     .append("efflux/").append(this.id).append('@')
-                    .append(this.dataChannel.getLocalAddress()).toString());
+                    .append(this.dataChannel.localAddress()).toString());
         }
         chunk.addItem(SdesChunkItems.createCnameItem(info.getCname()));
 
@@ -831,12 +820,10 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         this.controlListeners.clear();
 
         // Close data channel, send BYE RTCP packets and close control channel.
-        this.dataChannel.close();
         this.leaveSession(this.localParticipant.getSsrc(), "Session terminated.");
-        this.controlChannel.close();
 
-        this.dataBootstrap.releaseExternalResources();
-        this.controlBootstrap.releaseExternalResources();
+        this.dataGroup.shutdownGracefully().syncUninterruptibly();
+        this.controlGroup.shutdownGracefully().syncUninterruptibly();
         LOG.debug("RtpSession with id {} terminated.", this.id);
 
         for (RtpSessionEventListener listener : this.eventListeners) {

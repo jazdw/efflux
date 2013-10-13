@@ -17,8 +17,8 @@
 package com.biasedbit.efflux.packet;
 
 import com.biasedbit.efflux.util.ByteUtils;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -44,7 +44,7 @@ public class ControlPacketTest {
         byte[] thirdPacketBytes = ByteUtils
                 .convertHexStringToByteArray("81cb0001e6aa996e");
 
-        ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(firstPacketBytes, secondPacketBytes, thirdPacketBytes);
+        ByteBuf buffer = Unpooled.wrappedBuffer(firstPacketBytes, secondPacketBytes, thirdPacketBytes);
 
         List<ControlPacket> controlPackets = new ArrayList<ControlPacket>(3);
         while (buffer.readableBytes() > 0) {

@@ -17,8 +17,8 @@
 package com.biasedbit.efflux.packet;
 
 import com.biasedbit.efflux.util.ByteUtils;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -34,7 +34,7 @@ public class ReceiverReportPacketTest {
         // wireshark capture, from jlibrtp
         byte[] packetBytes = ByteUtils.convertHexStringToByteArray("80c90001e6aa996e");
 
-        ChannelBuffer buffer = ChannelBuffers.wrappedBuffer(packetBytes);
+        ByteBuf buffer = Unpooled.wrappedBuffer(packetBytes);
         ControlPacket controlPacket = ControlPacket.decode(buffer);
 
         assertEquals(ControlPacket.Type.RECEIVER_REPORT, controlPacket.getType());
