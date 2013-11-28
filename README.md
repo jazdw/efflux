@@ -1,5 +1,6 @@
 efflux
 ======
+This fork has been converted to work with Netty 4.x
 
 A Java RTP stack
 ----------------
